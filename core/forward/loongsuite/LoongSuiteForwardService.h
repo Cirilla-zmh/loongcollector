@@ -32,6 +32,9 @@ public:
     grpc::ServerUnaryReactor* Forward(grpc::CallbackServerContext* context,
                                       const LoongSuiteForwardRequest* request,
                                       LoongSuiteForwardResponse* response) override;
+
+private:
+    void printData(const std::string& data);
 };
 
 } // namespace logtail

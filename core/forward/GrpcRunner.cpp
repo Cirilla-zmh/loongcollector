@@ -25,6 +25,8 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <sys/stat.h>
+#include <cerrno>
 
 #include "Flags.h"
 #include "logger/Logger.h"
@@ -41,6 +43,38 @@ void GrpcInputRunner::Init() {
     if (mIsStarted.exchange(true)) {
         return;
     }
+
+    // Check and prepare Unix Domain Socket directory and file
+    const std::string socketDir = "/var/run/loongcollector";
+    const std::string socketFile = socketDir + "/apm.sock";
+    struct stat st;
+
+    // Check if directory exists
+    if (stat(socketDir.c_str(), &st) == 0) {
+        // Directory exists, check permissions
+        if ((st.st_mode & 0777) < 0755) {
+            LOG_ERROR(sLogger, ("socket directory permission too low", socketDir)("current permission", st.st_mode & 0777)("required permission", 0755));
+            return;
+        }
+    } else {
+        // Directory doesn't exist, create it
+        if (mkdir(socketDir.c_str(), 0755) != 0) {
+            LOG_ERROR(sLogger, ("failed to create socket directory", socketDir)("error", strerror(errno)));
+            return;
+        }
+    }
+
+    // Check if socket file exists
+    if (stat(socketFile.c_str(), &st) == 0) {
+        // Socket file exists, try to remove it
+        if (unlink(socketFile.c_str()) != 0) {
+            LOG_ERROR(sLogger, ("failed to remove existing socket file", socketFile)("error", strerror(errno)));
+            return;
+        }
+    }
+
+    LOG_INFO(sLogger, ("socket directory ready", socketDir));
+
     LOG_INFO(sLogger, ("GrpcInputRunner", "Start"));
 }
 
@@ -73,7 +107,7 @@ bool GrpcInputRunner::UpdateListenInput(const std::string& configName,
             shouldBuildNewServer = true;
         } else if (it->second.mService->Name() != T::Name()) {
             // Address already exists, check if the service type matches
-            LOG_ERROR(sLogger,
+            LOG_ERROR(sLogger, 
                       ("GrpcInputRunner", "address already exists with a different service type")("address", address)(
                           "existing service", it->second.mService->Name())("new service", T::Name()));
             return false;
@@ -106,7 +140,12 @@ bool GrpcInputRunner::UpdateListenInput(const std::string& configName,
         factories.emplace_back(std::make_unique<InFlightCountInterceptorFactory>(&it->second.mInFlightCnt));
         builder.experimental().SetInterceptorCreators(std::move(factories));
 
-        builder.AddListeningPort(address, grpc::InsecureServerCredentials());
+        // Check if it's a Unix Domain Socket address
+        std::string listenAddress = address;
+        if (address.find("unix://") == 0) {
+            listenAddress = address.substr(7); // Remove "unix://" prefix
+        }
+        builder.AddListeningPort(listenAddress, grpc::InsecureServerCredentials());
         // TODO: multi-service server is complex and lacks isolation, only support one service per server for now
         builder.RegisterService(service.get());
         auto server = builder.BuildAndStart();
@@ -162,6 +201,5 @@ bool GrpcInputRunner::ShutdownGrpcServer(grpc::Server* server, std::atomic_int* 
     }
     return false;
 }
-
 
 } // namespace logtail

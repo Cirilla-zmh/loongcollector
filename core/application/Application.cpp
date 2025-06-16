@@ -241,7 +241,7 @@ void Application::Start() { // GCOVR_EXCL_START
     ProcessorRunner::GetInstance()->Init();
     GrpcInputRunner::GetInstance()->Init();
     GrpcInputRunner::GetInstance()->UpdateListenInput<LoongSuiteForwardServiceImpl>(
-        "test", "0.0.0.0:8080", Json::Value{});
+        "test", "unix:///var/run/loongcollector/apm.sock", Json::Value{});
 
     // flusher_sls resource should be explicitly initialized to allow internal metrics and alarms to be sent
     FlusherSLS::InitResource();

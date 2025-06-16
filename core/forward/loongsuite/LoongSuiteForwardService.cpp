@@ -40,12 +40,31 @@ bool LoongSuiteForwardServiceImpl::Remove(std::string configName) {
 grpc::ServerUnaryReactor* LoongSuiteForwardServiceImpl::Forward(grpc::CallbackServerContext* context,
                                                                 const LoongSuiteForwardRequest* request,
                                                                 LoongSuiteForwardResponse* response) {
-    // Implement the logic to handle the request and fill the response
-    // For now, we just return nullptr to indicate no further processing
-    LOG_INFO(sLogger, ("Received LoongSuiteForwardRequest", "logic not implemented yet"));
+    if (context == nullptr || request == nullptr || response == nullptr) {
+        LOG_ERROR(sLogger, ("Invalid parameters in Forward method", "null pointer detected"));
+        auto* reactor = context ? context->DefaultReactor() : nullptr;
+        if (reactor) {
+            reactor->Finish(grpc::Status(grpc::StatusCode::INVALID_ARGUMENT, "Invalid parameters"));
+        }
+        return reactor;
+    }
+
+    // For now, we just read and print data in request
+    const std::string& data = request->data();
+    printData(data);
+
     auto* reactor = context->DefaultReactor();
     reactor->Finish(grpc::Status::OK);
     return reactor;
+}
+
+void LoongSuiteForwardServiceImpl::printData(const std::string& data) {
+    LOG_INFO(sLogger, ("Received data size", data.size()));
+    std::string byteValues;
+    for (const auto& byte : data) {
+        byteValues += std::to_string(static_cast<int>(static_cast<unsigned char>(byte))) + " ";
+    }
+    LOG_INFO(sLogger, ("Data bytes", byteValues));
 }
 
 } // namespace logtail

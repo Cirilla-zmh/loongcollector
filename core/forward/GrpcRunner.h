@@ -119,6 +119,7 @@ private:
     std::map<std::string, GrpcListenInput> mListenInputs;
 
     std::atomic_bool mIsStarted = false;
+    mode_t mOldUmask = 0;  // Store original umask
 };
 
 } // namespace logtail
