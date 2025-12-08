@@ -6033,7 +6033,7 @@ void ManualPBParserUnittest::TestMetricEventTimestampNanosecondConversion() {
     // Create MetricEvent with timestamp in nanoseconds: 1764735735000000000 ns
     // This should convert to: 1764735735 seconds + 0 nanoseconds
     uint64_t timestampNs = 1764735735000000000ULL;
-    auto metricEventData = encodeMetricEvent(timestampNs, "test_metric", {}, 42.5, {});
+    auto metricEventData = encodeMetricEvent(timestampNs, "test_metric", {}, 42.5, true);
     auto data = encodePipelineEventGroupWithMetrics({metricEventData});
 
     auto sourceBuffer = make_shared<SourceBuffer>();

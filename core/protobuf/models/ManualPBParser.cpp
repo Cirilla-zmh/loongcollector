@@ -278,6 +278,7 @@ bool ManualPBParser::readBytes(const uint8_t*& data, size_t& length) {
 }
 
 bool ManualPBParser::skipField(uint32_t wireType) {
+    // Unknown fields are expected for forward compatibility, so log at DEBUG level.
     LOG_DEBUG(sLogger, ("ManualPBParser encountered unknown wire type", std::to_string(wireType)));
     switch (wireType) {
         case kVarint: {
@@ -718,7 +719,7 @@ bool ManualPBParser::parseLogEvent(PipelineEventGroup& eventGroup) {
     // timestamp is in nanoseconds, convert to seconds and nanoseconds
     std::chrono::nanoseconds tns(timestamp);
     std::chrono::seconds ts = std::chrono::duration_cast<std::chrono::seconds>(tns);
-    logEvent->SetTimestamp(ts.count(), tns.count() - ts.count() * 1000000000);
+    logEvent->SetTimestamp(ts.count(), tns.count() % 1000000000);
     logEvent->SetPosition(fileOffset, rawSize);
     if (!level.empty()) {
         logEvent->SetLevel(level);
@@ -879,7 +880,7 @@ bool ManualPBParser::parseMetricEvent(PipelineEventGroup& eventGroup) {
     // timestamp is in nanoseconds, convert to seconds and nanoseconds
     std::chrono::nanoseconds tns(timestamp);
     std::chrono::seconds ts = std::chrono::duration_cast<std::chrono::seconds>(tns);
-    metricEvent->SetTimestamp(ts.count(), tns.count() - ts.count() * 1000000000);
+    metricEvent->SetTimestamp(ts.count(), tns.count() % 1000000000);
     if (!name.empty()) {
         metricEvent->SetName(name);
     }
@@ -1129,7 +1130,7 @@ bool ManualPBParser::parseSpanEvent(PipelineEventGroup& eventGroup) {
     // timestamp is in nanoseconds, convert to seconds and nanoseconds
     std::chrono::nanoseconds tns(timestamp);
     std::chrono::seconds ts = std::chrono::duration_cast<std::chrono::seconds>(tns);
-    spanEvent->SetTimestamp(ts.count(), tns.count() - ts.count() * 1000000000);
+    spanEvent->SetTimestamp(ts.count(), tns.count() % 1000000000);
     spanEvent->SetStartTimeNs(startTime);
     spanEvent->SetEndTimeNs(endTime);
 
